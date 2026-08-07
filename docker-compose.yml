@@ -1,0 +1,17 @@
+name: necommerce
+
+services:
+  backend:
+    image: ghcr.io/netology-code/necommerce-backend
+    ports:
+      - "9999:9999"
+
+  frontend:
+    image: ghcr.io/netology-code/necommerce-frontend
+    environment:
+      API: http://backend:9999
+      MEDIA: http://backend:9999
+    ports:
+      - "8888:80"
+    depends_on:
+      - backend

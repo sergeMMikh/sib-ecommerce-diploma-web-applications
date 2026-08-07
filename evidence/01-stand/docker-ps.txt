@@ -1,0 +1,4 @@
+$ docker ps
+CONTAINER ID   IMAGE                                       COMMAND                  CREATED       STATUS       PORTS                    NAMES
+a6ed302d40c2   ghcr.io/netology-code/necommerce-frontend   "/docker-entrypoint.…"   8 hours ago   Up 8 hours   0.0.0.0:8888->80/tcp     necommerce-frontend-1
+411cfba94fab   ghcr.io/netology-code/necommerce-backend    "java -jar necommerc…"   8 hours ago   Up 8 hours   0.0.0.0:9999->9999/tcp   necommerce-backend-1

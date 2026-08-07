@@ -1,0 +1,57 @@
+{
+  "command": "docker inspect necommerce-backend-1",
+  "projection": "sanitized audit fields",
+  "Id": "411cfba94fab770bb65107633ded1b4eac02574976360bd48e8cf2fe78242bbc",
+  "Name": "/necommerce-backend-1",
+  "Created": "2026-08-07T13:03:05.264044154Z",
+  "Path": "java",
+  "Args": ["-jar", "necommerce-1.0.jar"],
+  "ImageRef": "ghcr.io/netology-code/necommerce-backend",
+  "ImageId": "sha256:a68f8d87c94606afa004b375b6fcb7af523df1656659a0cf57b8ebc6c9359ea0",
+  "State": {
+    "Status": "running",
+    "Running": true,
+    "OOMKilled": false,
+    "ExitCode": 0,
+    "StartedAt": "2026-08-07T13:03:08.300647578Z"
+  },
+  "RestartCount": 0,
+  "Config": {
+    "User": "",
+    "WorkingDir": "/app",
+    "Env": [
+      "JAVA_HOME=/usr/local/openjdk-11",
+      "LANG=C.UTF-8",
+      "JAVA_VERSION=11.0.10"
+    ],
+    "ExposedPorts": ["9999/tcp"]
+  },
+  "HostConfig": {
+    "PortBindings": {"9999/tcp": [{"HostIp": "", "HostPort": "9999"}]},
+    "RestartPolicy": {"Name": "no", "MaximumRetryCount": 0},
+    "Privileged": false,
+    "ReadonlyRootfs": false,
+    "CapAdd": null,
+    "CapDrop": null,
+    "Memory": 0,
+    "NanoCpus": 0,
+    "PidsLimit": null,
+    "SecurityOpt": null
+  },
+  "Mounts": [],
+  "Network": {
+    "Name": "necommerce_default",
+    "Aliases": ["necommerce-backend-1", "backend"],
+    "Gateway": "172.18.0.1",
+    "IPAddress": "172.18.0.2",
+    "IPPrefixLen": 16
+  },
+  "ComposeLabels": {
+    "Project": "necommerce",
+    "Service": "backend",
+    "Version": "2.29.1",
+    "ConfigHash": "1246bf9b8a4bb3a6ee89c35c301934fd118b1cc352072efba351e3a500ea5e5f",
+    "WorkingDir": "/home/smm22/final-work-sib",
+    "ConfigFiles": "/home/smm22/final-work-sib/compose.yaml"
+  }
+}

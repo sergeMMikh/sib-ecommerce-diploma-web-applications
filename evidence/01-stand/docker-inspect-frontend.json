@@ -1,0 +1,58 @@
+{
+  "command": "docker inspect necommerce-frontend-1",
+  "projection": "sanitized audit fields",
+  "Id": "a6ed302d40c23f63b3698be5af60f1e19c8be767733be6b1641c4f4fa7560430",
+  "Name": "/necommerce-frontend-1",
+  "Created": "2026-08-07T13:03:07.270380634Z",
+  "Path": "/docker-entrypoint.sh",
+  "Args": ["nginx", "-g", "daemon off;"],
+  "ImageRef": "ghcr.io/netology-code/necommerce-frontend",
+  "ImageId": "sha256:142c29187ec52c189cfb751539742d72e46ac46c6df44d5f72e1b2a92bf50f0a",
+  "State": {
+    "Status": "running",
+    "Running": true,
+    "OOMKilled": false,
+    "ExitCode": 0,
+    "StartedAt": "2026-08-07T13:03:11.844169928Z"
+  },
+  "RestartCount": 0,
+  "Config": {
+    "User": "",
+    "WorkingDir": "/app",
+    "Env": [
+      "MEDIA=http://backend:9999",
+      "API=http://backend:9999",
+      "NGINX_VERSION=1.19.8",
+      "NJS_VERSION=0.5.2"
+    ],
+    "ExposedPorts": ["80/tcp"]
+  },
+  "HostConfig": {
+    "PortBindings": {"80/tcp": [{"HostIp": "", "HostPort": "8888"}]},
+    "RestartPolicy": {"Name": "no", "MaximumRetryCount": 0},
+    "Privileged": false,
+    "ReadonlyRootfs": false,
+    "CapAdd": null,
+    "CapDrop": null,
+    "Memory": 0,
+    "NanoCpus": 0,
+    "PidsLimit": null,
+    "SecurityOpt": null
+  },
+  "Mounts": [],
+  "Network": {
+    "Name": "necommerce_default",
+    "Aliases": ["necommerce-frontend-1", "frontend"],
+    "Gateway": "172.18.0.1",
+    "IPAddress": "172.18.0.3",
+    "IPPrefixLen": 16
+  },
+  "ComposeLabels": {
+    "Project": "necommerce",
+    "Service": "frontend",
+    "Version": "2.29.1",
+    "ConfigHash": "4dda8c736a03f04d5a72629d4ba60545ee6dd470cc91c172819201611f779c1d",
+    "WorkingDir": "/home/smm22/final-work-sib",
+    "ConfigFiles": "/home/smm22/final-work-sib/compose.yaml"
+  }
+}

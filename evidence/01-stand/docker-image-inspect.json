@@ -1,0 +1,56 @@
+{
+  "commands": [
+    "docker image inspect a68f8d87c946",
+    "docker image inspect 142c29187ec5"
+  ],
+  "projection": "identity and image Config fields; GraphDriver and RootFS layer paths omitted",
+  "images": [
+    {
+      "component": "backend",
+      "Id": "sha256:a68f8d87c94606afa004b375b6fcb7af523df1656659a0cf57b8ebc6c9359ea0",
+      "RepoTags": ["ghcr.io/netology-code/necommerce-backend:latest"],
+      "RepoDigests": ["ghcr.io/netology-code/necommerce-backend@sha256:05ef6e8afa6452c8f2c8f1a0e3391310ffebea75019983ab6fbf54b4ae230862"],
+      "Created": "2021-03-22T20:15:54.328790227Z",
+      "DockerVersion": "20.10.5+azure",
+      "Architecture": "amd64",
+      "Os": "linux",
+      "Size": 1701476456,
+      "Config": {
+        "User": "",
+        "Env": [
+          "PATH=/usr/local/openjdk-11/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+          "JAVA_HOME=/usr/local/openjdk-11",
+          "LANG=C.UTF-8",
+          "JAVA_VERSION=11.0.10"
+        ],
+        "Cmd": ["java", "-jar", "necommerce-1.0.jar"],
+        "WorkingDir": "/app",
+        "Entrypoint": null
+      }
+    },
+    {
+      "component": "frontend",
+      "Id": "sha256:142c29187ec52c189cfb751539742d72e46ac46c6df44d5f72e1b2a92bf50f0a",
+      "RepoTags": ["ghcr.io/netology-code/necommerce-frontend:latest"],
+      "RepoDigests": ["ghcr.io/netology-code/necommerce-frontend@sha256:73a3e5af7e2d39a37c78a066fb92379ccaf79e32887a7189a26b71dd4e8628d5"],
+      "Created": "2021-03-22T20:12:26.000198644Z",
+      "DockerVersion": "20.10.5+azure",
+      "Architecture": "amd64",
+      "Os": "linux",
+      "Size": 133949876,
+      "Config": {
+        "User": "",
+        "Env": [
+          "PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+          "NGINX_VERSION=1.19.8",
+          "NJS_VERSION=0.5.2",
+          "PKG_RELEASE=1~buster"
+        ],
+        "Cmd": ["nginx", "-g", "daemon off;"],
+        "WorkingDir": "/app",
+        "Entrypoint": ["/docker-entrypoint.sh"]
+      }
+    }
+  ],
+  "assessment": "Config.Env contains standard Java and nginx runtime variables only; no application credentials or tokens were observed in image metadata. This does not exclude secrets in image history or files."
+}
