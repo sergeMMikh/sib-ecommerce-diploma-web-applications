@@ -236,8 +236,8 @@ services:
 
 На основании требований законодательства, отраслевых стандартов и особенностей исследуемого приложения формируется перечень требований информационной безопасности, выполнение которых будет проверяться в ходе работы.
 
-| № | Что проверяется | Как проверяется: подходы и инструменты | База | Ожидаемый артефакт | Оценка, ч | 
-|---:|---|---|---|---|
+| № | Что проверяется | Как проверяется: подходы и инструменты | База | Ожидаемый артефакт | Оценка, ч |
+|---:|---|---|---|---|---:|
 | 1 | Работоспособность и воспроизводимость тестового стенда | `docker compose config/pull/up/ps`, `docker inspect`, `docker image inspect`, `docker logs`, `curl`; фиксация версий образов, digest, опубликованных портов, Docker-сетей и HTTP-кодов ответа | OWASP ASVS, OWASP WSTG 4.1–4.2, CIS Docker Benchmark | Паспорт тестового стенда: версии и digest образов, контейнеры, порты, сети, статус сервисов, результаты HTTP-проверки и санитаризированные стартовые логи | 0,5–1 |
 | 2 | Архитектура и поверхность атаки | По контроллерам, frontend-запросам, DevTools и ZAP составляется матрица «метод — маршрут — роль — объект — данные» и схема доверительных границ | WSTG 4.1, ASVS, API Security Top 10 | Карта компонентов, ролей, маршрутов, заказов, телефонов, токенов и файлов | 0,5–1 |
 | 3 | Репозитории и процесс разработки | Проверяются workflows, тесты, pinning Actions, `permissions`, правила веток/rulesets, два review, security jobs, Dependabot, Secret Scanning и происхождение образов; GitHub UI/API, OpenSSF Scorecard | NIST SSDF, OWASP SAMM, SLSA | Матрица заявленных и подтверждённых SDLC-контролей; недоступное — `BLOCKED` | 1–2 |
@@ -333,11 +333,14 @@ docker image inspect ghcr.io/netology-code/necommerce-frontend \
 docker image inspect ghcr.io/netology-code/necommerce-backend \
   --format 'backend RepoDigests={{json .RepoDigests}}'
 
-curl -sS -o /dev/null -w 'frontend /: %{http_code}\n' \
+curl -sS -o /dev/null -w 'frontend /: %{http_code}\
+' \
   http://127.0.0.1:8888/
-curl -sS -o /dev/null -w 'backend /: %{http_code}\n' \
+curl -sS -o /dev/null -w 'backend /: %{http_code}\
+' \
   http://127.0.0.1:9999/
-curl -sS -o /dev/null -w 'backend /api/products: %{http_code}\n' \
+curl -sS -o /dev/null -w 'backend /api/products: %{http_code}\
+' \
   http://127.0.0.1:9999/api/products
 ```
 ![second-test](image-4.png)
@@ -385,4 +388,3 @@ curl -sS -o /dev/null -w 'backend /api/products: %{http_code}\n' \
 
 
 ### Этап подготовки отчёта
-
