@@ -268,6 +268,8 @@ services:
 
 План считается подготовленным, когда для каждой работы определены цель, метод, инструменты, нормативная база, ожидаемый артефакт и интервальная оценка, а границы и риски согласованы. Формальное утверждение выполняет руководитель как представитель заказчика; до получения его ответа текущий статус — **«подготовлен и передаётся на утверждение»**.
 
+-----
+
 ### Выполнение
 
 #### 1. Работоспособность и воспроизводимость тестового стенда
@@ -277,6 +279,8 @@ services:
 **Среда:** Docker Engine 27.1.1 и Docker Compose v2.29.1-desktop.1 в WSL Ubuntu 22.04; проект `necommerce`.
 
 **Доказательства:** [листинг `docker ps`](./evidence/01-stand/docker-ps.txt), санитаризированные листинги `docker inspect` для [frontend](./evidence/01-stand/docker-inspect-frontend.json) и [backend](./evidence/01-stand/docker-inspect-backend.json), [результаты `curl`](./evidence/01-stand/curl.txt) и снимок страницы приложения. Описание набора находится в [каталоге доказательств](./evidence/01-stand/README.md). Значения секретов и необработанные журналы в репозиторий не переносятся.
+
+Хочу отметить значительный размер backend-образа отмечен для последующего анализа состава и слоёв в рамках пункта 7 „Контейнеры и конфигурация“
 
 Стартовая страница приложения
 
@@ -351,6 +355,75 @@ curl -sS -o /dev/null -w 'backend /api/products: %{http_code}\
 **Итог пункта 1:** работоспособность frontend и backend подтверждена, состав текущего стенда идентифицирован по image ID, registry digest и Compose config hash. Полная воспроизводимость не гарантирована из-за изменяемых ссылок на образы; дополнительно зафиксированы расширенная публикация портов и небезопасно подробные журналы. Общий статус пункта — `FINDING`.
 
 #### 2. Архитектура и поверхность атаки
+
+##### Архитектура приложения/стенда
+
+Исследуемый стенд состоит из двух Docker-контейнеров:
+
+* `frontend` — nginx, публикует web-интерфейс на порту `8888`;
+* `backend` — Spring Boot, публикует REST API на порту `9999`.
+
+Оба контейнера находятся в общей Docker-сети `necommerce_default`.
+Frontend обращается к backend по внутреннему имени `backend:9999`.
+
+Backend обеспечивает:
+* REST API `/api/**`;
+* работу с пользователями, товарами, комментариями и заказами;
+* загрузку файлов и аватаров;
+* публикацию media-файлов через `/media/**`;
+* работу с push-токенами и, в профиле `production`, взаимодействие с Firebase/FCM.
+
+Основные границы доверия:
+
+1. `пользователь → frontend` — недоверенные данные из браузера;
+2. `пользователь → backend API` — backend доступен напрямую через опубликованный порт `9999`, поэтому frontend не является границей безопасности;
+3. `backend → хранилище данных` — пользователи, заказы, товары и другие данные приложения;
+4. `backend → файловое хранилище` — загружаемые media-файлы и аватары;
+5. `backend → Firebase/FCM` — внешняя граница при использовании push-уведомлений.
+
+##### Выявленные маршруты API
+
+По результатам анализа backend-контроллеров выявлено 23 API-endpoint'а:
+
+* **Products**
+  * `GET /api/products`
+  * `GET /api/products/{id}`
+  * `POST /api/products` — `ADMIN`
+  * `DELETE /api/products/{id}`
+  * `POST /api/products/{id}/likes` — `USER`
+  * `DELETE /api/products/{id}/likes` — `USER`
+
+* **Comments**
+  * `GET /api/products/{productId}/comments`
+  * `POST /api/products/{productId}/comments` — `USER`
+  * `DELETE /api/products/{productId}/comments/{id}` — `ADMIN | USER`
+  * `POST /api/products/{productId}/comments/{id}/likes` — `USER`
+  * `DELETE /api/products/{productId}/comments/{id}/likes` — `USER`
+
+* **Orders**
+  * `GET /api/orders` — `MANAGER`
+  * `GET /api/orders/my` — `USER`
+  * `GET /api/orders/{id}`
+  * `POST /api/orders` — параметры `productId`, `phone`
+  * `POST /api/orders/{id}/status` — `MANAGER`
+
+* **Users**
+  * `POST /api/users/registration`
+  * `POST /api/users/creation` — `ADMIN`
+  * `POST /api/users/authentication`
+  * `POST /api/users/push-tokens`
+
+* **Files**
+  * `POST /api/avatars` — `USER`
+  * `POST /api/media` — `USER`
+  * `/media/**` — публикация загруженных файлов
+
+* **Push**
+  * `POST /api/pushes` — используется при профиле `production`
+
+Роли указаны по аннотациям @PreAuthorize в backend-контроллерах. Для маршрутов без явно указанной роли доступ ограничением на уровне контроллера не задан; глобальная конфигурация Spring Security использует anyRequest().permitAll(). Фактическая доступность и возможность выполнения операций будут проверены динамически на последующих этапах.
+
+И ещё один компонент поверхности атаки- файлы. Приложение отдельно публикует содержимое media-каталога по /media/**; этот путь также исключён из Spring Security.
 
 #### 3. Репозитории и процесс разработки
 
