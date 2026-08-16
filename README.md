@@ -430,6 +430,108 @@ Backend обеспечивает:
 
 #### 3. Репозитории и процесс разработки
 
+Проведён анализ публично доступной конфигурации GitHub Actions в репозиториях frontend и backend.
+
+##### Backend
+
+В репозитории backend обнаружены два workflow:
+
+* `.github/workflows/ci.yml`;
+* `.github/workflows/detekt-analysis.yml`.
+
+Основной CI запускается при `push` и `pull_request` в ветку `master`:
+
+```yaml
+on:
+  push:
+    branches: [ master ]
+  pull_request:
+    branches: [ master ]
+```
+
+При этом job `build` выполняет checkout исходного кода и сборку с последующей публикацией Docker-образа в GitHub Container Registry (GHCR):
+
+```yaml
+steps:
+  - uses: actions/checkout@v2
+  - name: Push to GitHub Packages
+    uses: docker/build-push-action@v1
+```
+
+Запуск автоматических тестов, Trivy, Semgrep, SonarQube, dependency scan или secret scan в данном workflow не обнаружен. Таким образом, публичная конфигурация CI не подтверждает заявление о прогоне автоматических тестов при каждом `push`.
+
+Отдельный workflow выполняет статический анализ Kotlin-кода с помощью Detekt и загружает результат в формате SARIF в GitHub Code Scanning. При этом анализ настроен как неблокирующий:
+
+```yaml
+- name: Run Detekt
+  continue-on-error: true
+  run: |
+    detekt --input ${{ github.workspace }} \
+      --report sarif:${{ github.workspace }}/detekt.sarif.json
+```
+
+Следовательно, обнаружение Detekt ошибок само по себе не приводит к завершению workflow со статусом `failed`.
+
+##### Frontend
+
+В репозитории frontend также обнаружены два workflow:
+
+* `.github/workflows/ci.yml`;
+* `.github/workflows/ossar-analysis.yml`.
+
+Основной CI аналогично выполняет сборку и публикацию Docker-образа:
+
+```yaml
+- uses: actions/checkout@v2
+- name: Push to GitHub Packages
+  uses: docker/build-push-action@v1
+```
+
+Явный запуск автоматических тестов и заявленных в задании security-инструментов в этом workflow не обнаружен.
+
+Отдельный workflow `OSSAR` выполняет статический анализ и передаёт SARIF-результаты в GitHub Security:
+
+```yaml
+- name: Run OSSAR
+  uses: github/ossar-action@v1
+
+- name: Upload OSSAR results
+  uses: github/codeql-action/upload-sarif@v1
+```
+
+##### Дополнительные наблюдения
+
+GitHub Actions подключаются по изменяемым тегам версий, например:
+
+```yaml
+actions/checkout@v2
+docker/build-push-action@v1
+github/codeql-action/upload-sarif@v1
+github/ossar-action@v1
+```
+
+Привязка сторонних Actions к конкретным commit SHA не используется. Явный блок минимальных разрешений `permissions:` в рассмотренных workflow также отсутствует.
+
+На текущем этапе подтверждены:
+
+* автоматическая сборка и публикация Docker-образов;
+* статический анализ backend с помощью Detekt;
+* статический анализ frontend с помощью OSSAR;
+* загрузка результатов анализа в GitHub Code Scanning.
+
+В публично доступных workflow не подтверждены:
+
+* автоматический запуск тестов при каждом `push`;
+* использование Trivy;
+* использование Semgrep;
+* использование SonarQube;
+* dependency scanning;
+* secret scanning.
+
+Отсутствие этих инструментов непосредственно в workflow не доказывает, что они не используются другими механизмами GitHub или закрытыми настройками репозитория. Их состояние требует отдельной проверки.
+
+**Предварительный статус:** `FINDING` — доступная конфигурация CI/CD не полностью подтверждает заявленный процесс разработки; часть контролей требует дополнительной проверки.
+
 #### 4. Поиск секретов
 
 ##### SECRET-IMG-01 — GCP service-account включён в backend-образ
