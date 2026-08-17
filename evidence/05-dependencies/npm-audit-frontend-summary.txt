@@ -1,0 +1,66 @@
+npm audit — frontend summary
+============================
+
+Date: 2026-08-17
+Target: necommerce-frontend/package-lock.json
+Command: npm audit --json > npm-audit-frontend.json
+
+1. Vulnerability summary
+------------------------
+info: 0
+low: 7
+moderate: 116
+high: 60
+critical: 21
+total: 204
+
+2. Direct vulnerable dependencies
+---------------------------------
+axios
+  severity: high
+  vulnerable range: <=0.32.0
+  fixAvailable: true
+
+react-scripts
+  severity: high
+  vulnerable range: >=0.1.0
+  fixAvailable:
+    name: react-scripts
+    version: 5.0.1
+    isSemVerMajor: true
+
+3. Critical dependency findings
+-------------------------------
+@babel/traverse | direct=false | range=<7.23.2 | fixAvailable=true
+@surma/rollup-plugin-off-main-thread | direct=false | range=<=2.1.0 | fixAvailable=true
+cipher-base | direct=false | range=<=1.0.4 | fixAvailable=true
+ejs | direct=false | range=<=3.1.9 | fixAvailable=true
+elliptic | direct=false | range=* | fixAvailable=true
+eventsource | direct=false | range=<1.1.1 | fixAvailable=true
+form-data | direct=false | range=<=2.5.5 | fixAvailable=true
+immer | direct=false | range=7.0.0 - 9.0.5 | fixAvailable=true
+json-schema | direct=false | range=<0.4.0 | fixAvailable=true
+jsprim | direct=false | range=0.3.0 - 1.4.1 || 2.0.0 - 2.0.1 | fixAvailable=true
+loader-utils | direct=false | range=<=1.4.1 || 2.0.0 - 2.0.3 | fixAvailable=true
+minimist | direct=false | range=1.0.0 - 1.2.5 | fixAvailable=true
+pbkdf2 | direct=false | range=3.0.3 - 3.1.2 | fixAvailable=true
+react-dev-utils | direct=false | range=0.5.2 - 12.0.0-next.60 | fixAvailable=true
+request | direct=false | range=* | fixAvailable=true
+sha.js | direct=false | range=<=2.4.11 | fixAvailable=true
+shell-quote | direct=false | range=<=1.8.4 | fixAvailable=true
+tar | direct=false | range=<=7.5.20 | fixAvailable=react-scripts@5.0.1 (SemVer major)
+url-parse | direct=false | range=<=1.5.8 | fixAvailable=true
+websocket-driver | direct=false | range=<=0.7.4 | fixAvailable=true
+workbox-build | direct=false | range=5.0.0-alpha.0 - 7.0.0 | fixAvailable=true
+
+4. Notes
+--------
+The full npm audit JSON was not committed because it is excessively verbose and primarily contains transitive dependency/advisory details.
+
+The summary intentionally preserves:
+- overall severity counts;
+- direct vulnerable dependencies;
+- all packages whose effective npm audit severity is critical;
+- fix availability.
+
+The counts above are npm audit package-level vulnerability results and must not be interpreted as 204 independently exploitable application vulnerabilities. Applicability requires triage of runtime vs dev/build scope, reachability, application usage and fixed versions.
