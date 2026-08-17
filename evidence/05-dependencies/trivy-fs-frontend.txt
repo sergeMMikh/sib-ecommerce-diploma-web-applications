@@ -1,0 +1,102 @@
+Necommerce frontend — dependency scan evidence
+Date: 2026-08-17
+Target: necommerce-frontend working tree / package-lock.json
+Tool: Trivy filesystem scanner (Docker image aquasec/trivy:latest)
+
+Commands
+========
+
+npm audit --json > ../npm-audit-frontend.json
+
+Result:
+npm error code ENOLOCK
+npm error audit This command requires an existing lockfile.
+npm error audit Try creating one first with: npm i --package-lock-only
+npm error audit Original error: loadVirtual requires existing shrinkwrap file
+
+The npm audit command was executed from a directory where npm did not find a lockfile, therefore this result is not treated as an npm audit vulnerability result.
+
+Trivy command
+=============
+
+docker run --rm \
+  -v "$PWD:/work" \
+  aquasec/trivy:latest \
+  fs /work/necommerce-frontend
+
+Relevant scanner output
+=======================
+
+INFO [vuln] Vulnerability scanning is enabled
+INFO [secret] Secret scanning is enabled
+INFO Number of language-specific files num=1
+INFO [npm] Detecting vulnerabilities...
+
+Report Summary
+
+Target             Type   Vulnerabilities   Secrets
+package-lock.json  npm    235               -
+
+package-lock.json (npm)
+Total: 235 (UNKNOWN: 0, LOW: 20, MEDIUM: 87, HIGH: 108, CRITICAL: 20)
+
+Examples of CRITICAL findings reported by Trivy
+===============================================
+
+@babel/traverse
+  CVE-2023-45133
+  Severity: CRITICAL
+  Installed: 7.13.0
+  Fixed: 7.23.2, 8.0.0-alpha.4
+  Title: babel: arbitrary code execution
+
+cipher-base
+  CVE-2025-9287
+  Severity: CRITICAL
+  Installed: 1.0.4
+  Fixed: 1.0.5
+
+EJS
+  CVE-2022-29078
+  Severity: CRITICAL
+  Installed: 2.7.4
+  Fixed: 3.1.7
+  Title: server-side template injection in outputFunctionName
+
+elliptic
+  GHSA-vjh7-7g9h-fjfh
+  Severity: CRITICAL
+  Installed: 6.5.4
+  Fixed: 6.6.1
+
+form-data
+  CVE-2025-7783
+  Severity: CRITICAL
+  Installed: 2.3.3
+  Fixed: 2.5.4, 3.0.4, 4.0.4
+
+immer
+  CVE-2021-23436
+  Severity: CRITICAL
+  Installed: 8.0.1
+  Fixed: 9.0.6
+
+json-schema
+  CVE-2021-3918
+  Severity: CRITICAL
+  Installed: 0.2.3
+  Fixed: 0.4.0
+
+loader-utils
+  CVE-2022-37601
+  Severity: CRITICAL
+  Installed: 1.2.3 / 1.4.0
+  Fixed: 2.0.3, 1.4.1
+
+Notes
+=====
+
+1. Counts are scanner findings in package-lock.json and are not yet equivalent to 235 independently exploitable application vulnerabilities.
+2. Runtime/dev dependency scope and actual reachability/applicability must be triaged before final risk assignment.
+3. The complete console output was intentionally not copied into README because it is very large. This evidence file preserves the command, summary, severity distribution and representative CRITICAL findings needed to reproduce and triage the result.
+4. Secret column '-' means secret scanning was not reported for package-lock.json as a secret target; it does not mean the entire repository was proven secret-free.
