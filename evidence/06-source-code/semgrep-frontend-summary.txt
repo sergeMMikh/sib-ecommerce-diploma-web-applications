@@ -1,0 +1,48 @@
+Necommerce frontend — Semgrep finding summary
+Date: 2026-08-19
+
+Summary
+=======
+Findings: 5
+Severity distribution:
+- WARNING: 5
+
+Findings
+========
+
+1. WARNING
+Rule: yaml.github-actions.security.github-actions-mutable-action-tag.github-actions-mutable-action-tag
+File: .github/workflows/ci.yml
+Line: 15
+Result: mutable GitHub Action reference. This duplicates the CI/CD supply-chain observation documented in package 3.
+
+2. WARNING
+Rule: yaml.github-actions.security.github-actions-mutable-action-tag.github-actions-mutable-action-tag
+File: .github/workflows/ci.yml
+Line: 17
+Result: mutable GitHub Action reference. This duplicates the CI/CD supply-chain observation documented in package 3.
+
+3. WARNING
+Rule: yaml.github-actions.security.github-actions-mutable-action-tag.github-actions-mutable-action-tag
+File: .github/workflows/ossar-analysis.yml
+Line: 23
+Result: mutable GitHub Action reference. This duplicates the CI/CD supply-chain observation documented in package 3.
+
+4. WARNING
+Rule: yaml.github-actions.security.github-actions-mutable-action-tag.github-actions-mutable-action-tag
+File: .github/workflows/ossar-analysis.yml
+Line: 37
+Result: mutable GitHub Action reference. This duplicates the CI/CD supply-chain observation documented in package 3.
+
+5. WARNING
+Rule: yaml.github-actions.security.github-actions-mutable-action-tag.github-actions-mutable-action-tag
+File: .github/workflows/ossar-analysis.yml
+Line: 42
+Result: mutable GitHub Action reference. This duplicates the CI/CD supply-chain observation documented in package 3.
+
+Triage
+======
+- Application JavaScript source-code findings reported by Semgrep: 0.
+- CI/CD findings: 5, retained as corroborating evidence for package 3 and not counted as new independent vulnerabilities in package 6.
+
+Semgrep output alone does not prove the absence of application vulnerabilities; manual review remains necessary.
