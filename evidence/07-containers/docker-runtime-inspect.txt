@@ -1,0 +1,97 @@
+Necommerce — container runtime inspection evidence
+Date: 2026-08-19
+
+Command
+=======
+
+docker ps --format 'table {{.Names}}\t{{.Image}}\t{{.Ports}}\t{{.Status}}'
+
+Relevant application containers
+===============================
+
+NAMES                   IMAGE                                       PORTS                                      STATUS
+necommerce-frontend-1   ghcr.io/netology-code/necommerce-frontend   0.0.0.0:8888->80/tcp, [::]:8888->80/tcp    Up 4 days
+necommerce-backend-1    ghcr.io/netology-code/necommerce-backend    0.0.0.0:9999->9999/tcp, [::]:9999->9999/tcp Up 4 days
+
+Note: unrelated containers present on the host were omitted from this sanitized evidence.
+
+Backend inspect
+===============
+
+Command:
+
+docker inspect necommerce-backend-1 | jq '.[0] | {
+  User: .Config.User,
+  Privileged: .HostConfig.Privileged,
+  ReadonlyRootfs: .HostConfig.ReadonlyRootfs,
+  CapAdd: .HostConfig.CapAdd,
+  CapDrop: .HostConfig.CapDrop,
+  SecurityOpt: .HostConfig.SecurityOpt,
+  Healthcheck: .Config.Healthcheck,
+  Ports: .NetworkSettings.Ports
+}'
+
+Result:
+
+{
+  "User": "",
+  "Privileged": false,
+  "ReadonlyRootfs": false,
+  "CapAdd": null,
+  "CapDrop": null,
+  "SecurityOpt": null,
+  "Healthcheck": null,
+  "Ports": {
+    "9999/tcp": [
+      {"HostIp": "0.0.0.0", "HostPort": "9999"},
+      {"HostIp": "::", "HostPort": "9999"}
+    ]
+  }
+}
+
+Frontend inspect
+================
+
+Command:
+
+docker inspect necommerce-frontend-1 | jq '.[0] | {
+  User: .Config.User,
+  Privileged: .HostConfig.Privileged,
+  ReadonlyRootfs: .HostConfig.ReadonlyRootfs,
+  CapAdd: .HostConfig.CapAdd,
+  CapDrop: .HostConfig.CapDrop,
+  SecurityOpt: .HostConfig.SecurityOpt,
+  Healthcheck: .Config.Healthcheck,
+  Ports: .NetworkSettings.Ports
+}'
+
+Result:
+
+{
+  "User": "",
+  "Privileged": false,
+  "ReadonlyRootfs": false,
+  "CapAdd": null,
+  "CapDrop": null,
+  "SecurityOpt": null,
+  "Healthcheck": null,
+  "Ports": {
+    "80/tcp": [
+      {"HostIp": "0.0.0.0", "HostPort": "8888"},
+      {"HostIp": "::", "HostPort": "8888"}
+    ]
+  }
+}
+
+Interpretation
+==============
+
+- Both containers are not privileged: PASS.
+- User is empty for both containers, so no explicit non-root runtime user is configured. For backend this is consistent with the earlier Semgrep Dockerfile missing-user finding.
+- Root filesystem is writable for both containers (ReadonlyRootfs=false).
+- No explicit capability additions or drops are configured (CapAdd/CapDrop=null).
+- No explicit SecurityOpt is configured.
+- No Docker healthcheck is configured.
+- Application ports are published on all IPv4 and IPv6 host interfaces (0.0.0.0 and ::).
+
+A first inspect attempt used the image-style name `necommerce-backend` instead of the actual Compose container name `necommerce-backend-1` and returned `no such object`; this operator error is omitted from the primary evidence because the subsequent command used the correct target.
