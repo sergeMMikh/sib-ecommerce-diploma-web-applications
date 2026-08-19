@@ -1,0 +1,50 @@
+Necommerce backend — Semgrep finding summary
+Date: 2026-08-19
+
+Summary
+=======
+Findings: 5
+Severity distribution:
+- ERROR: 1
+- WARNING: 4
+
+Findings
+========
+
+1. WARNING
+Rule: yaml.github-actions.security.github-actions-mutable-action-tag.github-actions-mutable-action-tag
+File: .github/workflows/ci.yml
+Line: 15
+Result: mutable GitHub Action reference. This duplicates the CI/CD supply-chain observation documented in package 3.
+
+2. WARNING
+Rule: yaml.github-actions.security.github-actions-mutable-action-tag.github-actions-mutable-action-tag
+File: .github/workflows/ci.yml
+Line: 17
+Result: mutable GitHub Action reference. This duplicates the CI/CD supply-chain observation documented in package 3.
+
+3. WARNING
+Rule: yaml.github-actions.security.github-actions-mutable-action-tag.github-actions-mutable-action-tag
+File: .github/workflows/detekt-analysis.yml
+Line: 43
+Result: mutable GitHub Action reference. This duplicates the CI/CD supply-chain observation documented in package 3.
+
+4. WARNING
+Rule: yaml.github-actions.security.github-actions-mutable-action-tag.github-actions-mutable-action-tag
+File: .github/workflows/detekt-analysis.yml
+Line: 99
+Result: mutable GitHub Action reference. This duplicates the CI/CD supply-chain observation documented in package 3.
+
+5. ERROR
+Rule: dockerfile.security.missing-user.missing-user
+File: Dockerfile
+Line: 8
+Result: no non-root USER is specified. The container may run as root. This finding is relevant to package 7 (container/configuration hardening) and is consistent with the previously observed runtime user root.
+
+Triage
+======
+- Application Kotlin source-code findings reported by Semgrep: 0.
+- CI/CD findings: 4, retained as corroborating evidence for package 3 and not counted as new independent vulnerabilities in package 6.
+- Dockerfile finding: 1, retained as corroborating evidence for package 7 and not counted as a separate application-code vulnerability in package 6.
+
+Semgrep output alone does not prove the absence of application vulnerabilities; manual review of security configuration, authorization, object access, tokens, files and logging is still required.
