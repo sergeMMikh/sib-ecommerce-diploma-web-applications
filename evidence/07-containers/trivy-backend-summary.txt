@@ -1,0 +1,73 @@
+Necommerce backend — Trivy image summary
+Date: 2026-08-19
+Target image ID: a68f8d87c946
+Base OS detected by Trivy: Debian 10.8
+Tool: Trivy image scanner
+Scanners: vuln,misconfig
+
+Command
+=======
+
+docker run --rm \
+  -v /var/run/docker.sock:/var/run/docker.sock \
+  aquasec/trivy:latest \
+  image --scanners vuln,misconfig \
+  a68f8d87c946
+
+Summary
+=======
+
+OS packages (Debian 10.8):
+- total findings: 538
+- UNKNOWN: 12
+- LOW: 68
+- MEDIUM: 188
+- HIGH: 217
+- CRITICAL: 53
+
+Java/JAR findings reported by Trivy:
+- total findings: 665
+- UNKNOWN: 0
+- LOW: 34
+- MEDIUM: 303
+- HIGH: 284
+- CRITICAL: 44
+
+The totals above are scanner findings, not a count of independently exploitable application vulnerabilities. The backend image contains the application JAR as well as Gradle cache/build-time JARs, so duplicate and build-time findings are present and require triage.
+
+Representative findings
+=======================
+
+OS layer:
+- zlib1g — CVE-2022-37434 — CRITICAL — fixed version available
+- multiple Debian 10 packages have HIGH/CRITICAL security advisories
+
+Java/runtime/build layer:
+- ch.qos.logback:logback-classic 1.2.3 — CVE-2023-6378 — HIGH — fixed versions available
+- com.h2database:h2 1.4.200 — CVE-2021-42392 — CRITICAL — fixed version available
+- org.apache.tomcat.embed:tomcat-embed-core 9.0.39 — multiple HIGH/CRITICAL advisories reported by Trivy
+- commons-io:commons-io 2.8.0 — CVE-2024-47554 — HIGH — fixed version available
+
+Image composition observations
+==============================
+
+The Trivy report enumerates many artifacts under:
+
+/root/.gradle/caches/...
+
+This indicates that the runtime image contains Gradle cache/build dependencies in addition to the application artifact. This increases image size, attack surface and the number of vulnerable components carried into runtime.
+
+Trivy also reported 2 Dockerfile misconfiguration findings for src/Dockerfile. These should be considered together with the independent Semgrep finding that the Dockerfile does not define a non-root USER.
+
+Interpretation
+==============
+
+FINDING — the backend image is based on an outdated Debian 10.8 userspace and contains a large number of HIGH/CRITICAL vulnerability findings. It also includes build-time Gradle cache artifacts that should not be present in a minimal runtime image.
+
+Recommended remediation:
+1. Rebuild from an actively supported, minimal base image.
+2. Use a multi-stage Docker build and copy only the runtime artifact(s) into the final image.
+3. Remove Gradle caches/build toolchain from the runtime image.
+4. Run as an explicit non-root user.
+5. Upgrade application dependencies and OS packages with known HIGH/CRITICAL advisories.
+6. Re-scan the rebuilt immutable image and triage remaining runtime-reachable findings.
