@@ -1,0 +1,49 @@
+Necommerce frontend — Semgrep CE scan evidence
+Date: 2026-08-19
+Target: necommerce-frontend working tree
+Tool: Semgrep CE (Docker image semgrep/semgrep:latest)
+Configuration: --config auto
+
+Command
+=======
+
+docker run --rm \
+  -v "$PWD:/src" \
+  semgrep/semgrep \
+  semgrep scan --config auto \
+  --json \
+  --output /src/semgrep-frontend.json \
+  /src/necommerce-frontend
+
+Scan Status
+===========
+
+Scanning 41 files tracked by git with 1074 Code rules.
+
+Language / rules / files:
+- <multilang>: 60 rules, 41 files
+- js: 153 rules, 20 files
+- json: 4 rules, 4 files
+- yaml: 35 rules, 2 files
+- dockerfile: 6 rules, 1 file
+- html: 1 rule, 1 file
+
+Scan Summary
+============
+
+Scan completed successfully.
+Findings: 5 (5 blocking)
+Rules run: 256
+Targets scanned: 41
+Parsed lines: ~100.0%
+Scan was limited to files tracked by git.
+
+Ran 256 rules on 41 files: 5 findings.
+
+Notes
+=====
+
+1. "blocking" is Semgrep scan output and is not treated as equivalent to a confirmed HIGH/CRITICAL exploitable vulnerability.
+2. Individual findings, severity, affected source locations and applicability still require review.
+3. HIGH/CRITICAL findings, if present, must be manually verified against the source code before final risk assignment.
+4. The generated semgrep-frontend.json remains a working scan artifact and is not committed here at this stage; a filtered finding summary will be added after triage.
