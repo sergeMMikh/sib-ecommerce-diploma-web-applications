@@ -4,49 +4,55 @@
 
 Выполнен `docker inspect` запущенных frontend/backend контейнеров. Санитаризированный листинг: [docker-runtime-inspect.txt](./docker-runtime-inspect.txt).
 
-Предварительно подтверждено:
+Подтверждено:
 
 | Проверка | Backend | Frontend |
 |---|---|---|
 | Privileged | `false` — PASS | `false` — PASS |
-| Explicit non-root `User` | отсутствует — FINDING | отсутствует — требует оценки с учётом базового образа |
+| Explicit non-root `User` | отсутствует — FINDING | отсутствует — hardening не подтверждён |
 | Read-only root FS | `false` — hardening отсутствует | `false` — hardening отсутствует |
 | Capability drop | не настроен | не настроен |
 | `SecurityOpt` | не настроен | не настроен |
 | Healthcheck | отсутствует | отсутствует |
 | Host port binding | `9999` → `0.0.0.0`/`::` | `8888` → `0.0.0.0`/`::` |
 
-Для backend отсутствие explicit `User` согласуется с уже подтверждённой Semgrep-находкой `Dockerfile missing-user`. Для frontend пустое `.Config.User` само по себе ещё не доказывает фактический UID процесса; это следует проверить командой `docker exec necommerce-frontend-1 id` либо по Dockerfile/base image.
+Для backend отсутствие explicit `User` согласуется с Semgrep-находкой `Dockerfile missing-user`. Публикация портов на всех интерфейсах ранее фиксировалась в evidence пункта 1 и здесь рассматривается как часть runtime-hardening, а не как отдельная новая уязвимость.
 
-Публикация портов на всех интерфейсах уже наблюдалась при фиксации стенда и здесь рассматривается как часть runtime-конфигурации, а не как новая независимая уязвимость.
+## Trivy image scan
 
-## Trivy image/config
+После неудачного первичного запуска по Compose container names сканирование повторено по локальным immutable image IDs:
 
-Первый запуск Trivy выполнен с Compose container names (`necommerce-backend-1`, `necommerce-frontend-1`), тогда как `trivy image` ожидает image reference. Оба запуска завершились до сканирования цели и не являются результатами security scan.
+- backend: `a68f8d87c946`;
+- frontend: `142c29187ec5`.
 
-Санитаризированный листинг: [trivy-image-attempt.txt](./trivy-image-attempt.txt).
+Первичная ошибочная попытка сохранена отдельно для воспроизводимости: [trivy-image-attempt.txt](./trivy-image-attempt.txt). Она не учитывается как результат security scan.
 
-Повторить следует для:
+### Backend
 
-```bash
-docker run --rm \
-  -v /var/run/docker.sock:/var/run/docker.sock \
-  aquasec/trivy:latest \
-  image --scanners vuln,misconfig \
-  ghcr.io/netology-code/necommerce-backend
-```
+Санитаризированная выжимка: [trivy-backend-summary.txt](./trivy-backend-summary.txt).
 
-и:
+Trivy определил базовый userspace как Debian 10.8 и сообщил:
 
-```bash
-docker run --rm \
-  -v /var/run/docker.sock:/var/run/docker.sock \
-  aquasec/trivy:latest \
-  image --scanners vuln,misconfig \
-  ghcr.io/netology-code/necommerce-frontend
-```
+| Scope | Total | HIGH | CRITICAL |
+|---|---:|---:|---:|
+| OS packages | 538 | 217 | 53 |
+| Java/JAR findings | 665 | 284 | 44 |
 
-Для воспроизводимости предпочтительно использовать уже зафиксированный image ID или registry digest.
+Эти значения являются scanner findings и не складываются в число уникальных эксплуатируемых уязвимостей. В образе присутствуют приложение и многочисленные артефакты `/root/.gradle/caches/...`, из-за чего отчёт содержит build-time зависимости и повторяющиеся находки.
+
+Наличие Gradle cache в runtime image также объясняет чрезмерный размер backend-образа и свидетельствует об отсутствии минимизации финального image. Рекомендуется multi-stage build с переносом в runtime-слой только необходимых артефактов.
+
+### Frontend
+
+Санитаризированная выжимка: [trivy-frontend-summary.txt](./trivy-frontend-summary.txt).
+
+Для Debian 10.8 Trivy сообщил:
+
+| Scope | Total | HIGH | CRITICAL |
+|---|---:|---:|---:|
+| OS packages | 445 | 159 | 43 |
+
+Большая часть результата относится к устаревшему базовому userspace. Количество findings не означает соответствующее количество независимо эксплуатируемых уязвимостей; необходим триаж достижимости и фактического использования пакетов.
 
 ## Связь с предыдущими пунктами
 
@@ -54,6 +60,16 @@ Credential `/src/fcm.json`, обнаруженный в backend image, отно�
 
 Mutable image references и публикация портов были впервые зафиксированы в evidence пункта 1. В пункте 7 они используются как входные данные для оценки container hardening.
 
-## Статус
+## Итог
 
-`IN PROGRESS` — runtime inspection выполнен; Trivy image scan необходимо повторить с корректными image references, после чего проверить image history и фактических runtime users/capabilities.
+`FINDING` — container hardening недостаточен, а оба образа построены на устаревшем Debian 10.8 и содержат большое количество HIGH/CRITICAL vulnerability findings. Backend дополнительно содержит build-time Gradle cache и не задаёт явного non-root пользователя.
+
+Основные рекомендации:
+
+1. Перейти на актуальные минимальные base images.
+2. Для backend использовать multi-stage build и исключить Gradle/build cache из runtime image.
+3. Запускать контейнеры от непривилегированного пользователя.
+4. По возможности включить read-only root filesystem, минимизировать capabilities и задать security options.
+5. Добавить healthcheck.
+6. Обновить OS/application dependencies с известными HIGH/CRITICAL advisory и повторить Trivy scan.
+7. После пересборки фиксировать и проверять immutable digest/ID образов.
