@@ -1,0 +1,54 @@
+Necommerce — initial Trivy image scan attempt
+Date: 2026-08-19
+Tool: Trivy (Docker image aquasec/trivy:latest)
+
+Purpose
+=======
+
+Attempted vulnerability/misconfiguration scans of the backend and frontend images.
+
+Backend attempt
+===============
+
+Command:
+
+docker run --rm \
+  -v /var/run/docker.sock:/var/run/docker.sock \
+  aquasec/trivy:latest \
+  image --scanners vuln,misconfig \
+  necommerce-backend-1
+
+Result:
+
+FATAL: unable to find the specified image "necommerce-backend-1".
+Docker daemon response: No such image: necommerce-backend-1:latest.
+
+Frontend attempt
+================
+
+Command:
+
+docker run --rm \
+  -v /var/run/docker.sock:/var/run/docker.sock \
+  aquasec/trivy:latest \
+  image --scanners vuln,misconfig \
+  necommerce-frontend-1
+
+Result:
+
+FATAL: unable to find the specified image "necommerce-frontend-1".
+Docker daemon response: No such image: necommerce-frontend-1:latest.
+
+Interpretation
+==============
+
+The commands supplied Compose container names to `trivy image`. `trivy image` expects an image reference, not a container name. Therefore these attempts did not scan either application image and must not be interpreted as PASS or FINDING results.
+
+Correct image references from `docker ps` are:
+
+- ghcr.io/netology-code/necommerce-backend
+- ghcr.io/netology-code/necommerce-frontend
+
+The scans must be repeated using those image references (preferably pinned to the image ID or digest already recorded in the stand evidence). The vulnerability database and misconfiguration checks bundle were downloaded successfully before target resolution failed.
+
+Status: NOT TESTED — image scan attempt failed before scanning the target.
