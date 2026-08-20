@@ -1,0 +1,101 @@
+{
+	"@programName": "ZAP",
+	"@version": "2.17.0",
+	"@generated": "Thu, 20 Aug 2026 18:08:51",
+	"created": "2026-08-20T18:08:51.126444895Z",
+	"insights":[
+		{
+			"level": "Info",
+			"reason": "Informational",
+			"site": "http://host.docker.internal:9999",
+			"key": "insight.code.2xx",
+			"description": "Percentage of responses with status code 2xx",
+			"statistic": "100"
+		},
+		{
+			"level": "Info",
+			"reason": "Informational",
+			"site": "http://host.docker.internal:9999",
+			"key": "insight.endpoint.ctype.application/json",
+			"description": "Percentage of endpoints with content type application/json",
+			"statistic": "100"
+		},
+		{
+			"level": "Info",
+			"reason": "Informational",
+			"site": "http://host.docker.internal:9999",
+			"key": "insight.endpoint.method.GET",
+			"description": "Percentage of endpoints with method GET",
+			"statistic": "100"
+		},
+		{
+			"level": "Info",
+			"reason": "Informational",
+			"site": "http://host.docker.internal:9999",
+			"key": "insight.endpoint.total",
+			"description": "Count of total endpoints",
+			"statistic": "3"
+		},
+		{
+			"level": "Info",
+			"reason": "Informational",
+			"site": "http://host.docker.internal:9999",
+			"key": "insight.response.slow",
+			"description": "Percentage of slow responses",
+			"statistic": "66"
+		}
+	],
+	"site":[ 
+		{
+			"@name": "http://host.docker.internal:9999",
+			"@host": "host.docker.internal",
+			"@port": "9999",
+			"@ssl": "false",
+			"alerts": [ 
+				{
+					"pluginid": "10096",
+					"alertRef": "10096",
+					"alert": "Timestamp Disclosure - Unix",
+					"name": "Timestamp Disclosure - Unix",
+					"riskcode": "1",
+					"confidence": "1",
+					"riskdesc": "Low (Low)",
+					"desc": "<p>A timestamp was disclosed by the application/web server. - Unix</p>",
+					"instances":[ 
+						{
+							"id": "0",
+							"uri": "http://host.docker.internal:9999/api/products",
+							"nodeName": "http:\/\/host.docker.internal:9999\/api\/products",
+							"method": "GET",
+							"param": "",
+							"attack": "",
+							"evidence": "1786830913",
+							"otherinfo": "1786830913, which evaluates to: 2026-08-15 21:55:13."
+						},
+						{
+							"id": "1",
+							"uri": "http://host.docker.internal:9999/api/products/1",
+							"nodeName": "http:\/\/host.docker.internal:9999\/api\/products\/1",
+							"method": "GET",
+							"param": "",
+							"attack": "",
+							"evidence": "1786830913",
+							"otherinfo": "1786830913, which evaluates to: 2026-08-15 21:55:13."
+						}
+					],
+					"count": "2",
+					"systemic": false,
+					"solution": "<p>Manually confirm that the timestamp data is not sensitive, and that the data cannot be aggregated to disclose exploitable patterns.</p>",
+					"otherinfo": "<p>1786830913, which evaluates to: 2026-08-15 21:55:13.</p>",
+					"reference": "<p>https://cwe.mitre.org/data/definitions/200.html</p>",
+					"cweid": "497",
+					"wascid": "13",
+					"sourceid": "1"
+				}
+			]
+		}
+	],
+	"sequences":[
+	]
+
+}

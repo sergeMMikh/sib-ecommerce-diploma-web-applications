@@ -1,0 +1,35 @@
+env:
+  contexts:
+    - name: necommerce-backend
+      urls:
+        - http://host.docker.internal:9999
+
+jobs:
+  - type: requestor
+    parameters:
+      requests:
+        - url: http://host.docker.internal:9999/api/products
+          name: products
+          method: GET
+          responseCode: 200
+
+        - url: http://host.docker.internal:9999/api/products/1
+          name: product-1
+          method: GET
+          responseCode: 200
+
+        - url: http://host.docker.internal:9999/api/products/1/comments
+          name: product-1-comments
+          method: GET
+          responseCode: 200
+
+  - type: passiveScan-wait
+    parameters:
+      maxDuration: 5
+
+  - type: report
+    parameters:
+      template: traditional-json
+      reportDir: /zap/wrk
+      reportFile: zap-backend-report.json
+      reportTitle: Necommerce Backend Passive DAST
