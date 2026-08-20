@@ -795,6 +795,12 @@ Credential `/src/fcm.json`, ранее обнаруженный в backend image
 
 -----
 
+#### 8. Автоматический DAST
+
+Результаты OWASP ZAP Baseline для frontend сохранены в [отчёте ZAP](./evidence/08-dast/zap-frontend-report.md).
+
+-----
+
 ### Этап подготовки отчёта
 
 #### Статус промежуточного среза
