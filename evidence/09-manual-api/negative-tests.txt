@@ -1,0 +1,103 @@
+Necommerce — manual web/API negative test evidence
+Date: 2026-08-20
+Target: local backend http://127.0.0.1:9999
+
+Scope
+=====
+Only safe manual requests against the local test stand are included. Authentication/authorization matrix testing belongs primarily to step 10; however, an authorization defect discovered during step 9 is recorded here and cross-referenced for step 10.
+
+API-NEG-01 — nonexistent product ID
+===================================
+Request:
+  curl -i http://127.0.0.1:9999/api/products/999999
+
+Observed:
+  HTTP/1.1 404 Not Found
+  {"timestamp":"2026-08-20T18:30:09.830+00:00","status":404,"error":"Not Found","message":"","path":"/api/products/999999"}
+
+Assessment: PASS — missing object is handled with 404 and no stack trace, Java exception, SQL details, or other internal implementation data are returned.
+
+API-NEG-02 — invalid product ID type
+====================================
+Request:
+  curl -i http://127.0.0.1:9999/api/products/abc
+
+Observed:
+  HTTP/1.1 400 Bad Request
+  {"timestamp":"2026-08-20T18:30:21.092+00:00","status":400,"error":"Bad Request","message":"","path":"/api/products/abc"}
+
+Assessment: PASS — invalid path-variable type is rejected with 400 and no internal exception details are disclosed.
+
+API-AUTHZ-01 — anonymous product deletion
+==========================================
+Request without Authorization header:
+  curl -i -X DELETE http://127.0.0.1:9999/api/products/1
+
+Observed:
+  HTTP/1.1 200 OK
+  Content-Length: 0
+
+Verification:
+  curl -i http://127.0.0.1:9999/api/products/1
+
+Observed verification result:
+  HTTP/1.1 404 Not Found
+
+Assessment: FINDING — dynamically confirmed.
+The anonymous DELETE request changed application state and removed product id=1. The behavior was reproduced again after resetting the Compose stand. This confirms the authorization candidate previously identified during manual source-code review. Final role-matrix classification belongs to step 10 (Broken Access Control / Broken Function Level Authorization candidate).
+
+API-NEG-03 — malformed JSON
+===========================
+Request:
+  curl -i \
+    -X POST \
+    -H 'Content-Type: application/json' \
+    --data '{"broken":' \
+    http://127.0.0.1:9999/api/users/registration
+
+Observed:
+  HTTP/1.1 400 Bad Request
+  {"timestamp":"2026-08-20T19:15:26.590+00:00","status":400,"error":"Bad Request","message":"","path":"/api/users/registration"}
+
+Assessment: PASS — malformed JSON is rejected and the response does not expose stack traces or parser/framework exception details.
+
+API-NEG-04 — unsupported HTTP method
+====================================
+Request:
+  curl -i -X PUT http://127.0.0.1:9999/api/products/1
+
+Observed:
+  HTTP/1.1 405 Method Not Allowed
+  Allow: GET, DELETE
+  {"timestamp":"2026-08-20T19:15:34.601+00:00","status":405,"error":"Method Not Allowed","message":"","path":"/api/products/1"}
+
+Assessment: PASS — unsupported method is rejected with 405 and a minimal error response.
+
+API-NEG-05 — unauthorized media upload attempt
+==============================================
+Request without Authorization header:
+  curl -i -X POST \
+    -F 'file=@/etc/hosts;type=text/plain' \
+    http://127.0.0.1:9999/api/media
+
+Observed:
+  HTTP/1.1 403 Forbidden
+  {"timestamp":"2026-08-20T19:15:40.343+00:00","status":403,"error":"Forbidden","message":"","path":"/api/media"}
+
+Assessment: PASS for anonymous access control.
+Because authorization rejected the request before file-content validation, this test does not prove that an authenticated user cannot upload an unsupported file type. File-type validation was separately reviewed in source code.
+
+API-AUTHZ-02 — order object access candidate
+============================================
+Anonymous GET /api/orders/{id} requests for IDs 1..20 all returned HTTP 404. No existing order object was available in the current stand, therefore object-level authorization could not be dynamically assessed.
+
+Assessment: INCONCLUSIVE / NOT TESTED for object-level authorization.
+Reason: 404 cannot distinguish correct access control from an unrestricted endpoint returning object-not-found.
+
+Runtime credential logging observation
+======================================
+After Compose reset, backend startup logs again showed that an automatically generated administrator login and password are written to WARN logs. The credential value is intentionally omitted from evidence. This behavior was already identified in source review and is now runtime-confirmed; it is not counted as a new independent step-9 finding.
+
+Common response-header observation
+==================================
+Tested backend responses included X-Content-Type-Options: nosniff, X-Frame-Options: DENY and no-cache/no-store cache controls. These are positive observations for the tested responses, not proof of global header coverage.
