@@ -855,7 +855,7 @@ Backend evidence:
 
 * [JSON-отчёт ZAP](./evidence/08-dast/zap-backend-report.json);
 * [конфигурация трёх GET-запросов](./evidence/08-dast/zap-backend.yaml);
-* [журнал запуска](./evidence/08-dast/zap-backend.log).
+* [журнал запуска](./evidence/08-dast/zap-backend-requestor.log).
 
 **Итог backend Baseline:** `PASS` для проверенного набора API GET-endpoint'ов — значимых security alert'ов не обнаружено; единственный LOW alert после ручной проверки классифицирован как false positive.
 
@@ -864,6 +864,17 @@ Backend evidence:
 ![product-id=1](image-10.png)
 
 **Итог пункта 8:** `FINDING` — frontend Baseline выявил отсутствующие защитные заголовки и раскрытие версии сервера; backend Baseline получил `PASS` в пределах трёх проверенных GET-endpoint'ов. Ограничение API-покрытия явно сохранено.
+
+-----
+
+#### 9. Ручные проверки web/API
+
+Здесь буду пистаь только обнаруженные уязвимости. Полный список тестов в [файле](evidence\09-manual-api\README.md).
+
+DELETE /api/products/1 без токена вернул 200, после чего GET /api/products/1 стал возвращать 404. Значит анонимный пользователь действительно может удалить товар. Это подтверждает тот результат, который был ранее найден при ручном review исходного кода. Запрос выполнен без заголовка Authorization.
+
+![delete_product-1](image-11.png)
+
 
 -----
 
