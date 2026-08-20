@@ -1,0 +1,221 @@
+meta:
+  title: Necommerce authentication and authorization test plan
+  target: http://127.0.0.1:9999
+  scope: local test stand only
+  credentials_policy: do not commit passwords or tokens; use environment variables
+  authorization_header: raw token in Authorization header, without Bearer prefix
+
+actors:
+  anonymous:
+    token_env: null
+  userA:
+    login: userA
+    roles: [ROLE_USER]
+    token_env: TOKEN_A
+  userB:
+    login: userB
+    roles: [ROLE_USER]
+    token_env: TOKEN_B
+  manager:
+    login: manager1
+    roles: [ROLE_MANAGER]
+    token_env: MANAGER_TOKEN
+  admin:
+    login: admin
+    roles: [ROLE_ADMIN]
+    token_env: ADMIN_TOKEN
+
+setup:
+  - id: AUTH-SETUP-01
+    action: register userA
+    method: POST
+    path: /api/users/registration
+    params:
+      login: userA
+      pass: ${TEST_USER_PASS}
+      name: UserA
+    expected: 200
+  - id: AUTH-SETUP-02
+    action: register userB
+    method: POST
+    path: /api/users/registration
+    params:
+      login: userB
+      pass: ${TEST_USER_PASS}
+      name: UserB
+    expected: 200
+  - id: AUTH-SETUP-03
+    action: authenticate admin
+    method: POST
+    path: /api/users/authentication
+    params:
+      login: admin
+      pass: ${ADMIN_PASS}
+    expected: 200
+  - id: AUTH-SETUP-04
+    action: create manager as admin
+    method: POST
+    path: /api/users/creation
+    auth: ADMIN_TOKEN
+    params:
+      login: manager1
+      pass: ${TEST_MANAGER_PASS}
+      name: Manager
+      avatar: netology.jpg
+      roles: ROLE_MANAGER
+    expected: 200
+
+checks:
+  - id: AUTH-01
+    title: invalid credentials rejected
+    actor: anonymous
+    method: POST
+    path: /api/users/authentication
+    params:
+      login: userA
+      pass: wrong-password
+    expected: [400, 401, 403, 404]
+    destructive: false
+
+  - id: AUTH-02
+    title: anonymous cannot list all orders
+    actor: anonymous
+    method: GET
+    path: /api/orders
+    expected: [401, 403]
+    destructive: false
+
+  - id: AUTH-03
+    title: ROLE_USER cannot list all orders
+    actor: userA
+    method: GET
+    path: /api/orders
+    expected: [401, 403]
+    destructive: false
+
+  - id: AUTH-04
+    title: ROLE_MANAGER can list all orders
+    actor: manager
+    method: GET
+    path: /api/orders
+    expected: 200
+    destructive: false
+
+  - id: AUTH-05
+    title: ROLE_USER can list own orders
+    actor: userA
+    method: GET
+    path: /api/orders/my
+    expected: 200
+    destructive: false
+
+  - id: AUTH-06
+    title: userA creates own test order
+    actor: userA
+    method: POST
+    path: /api/orders
+    params:
+      productId: 1
+      phone: 79990000001
+    expected: 200
+    captures:
+      order_id: ORDER_A_ID
+    destructive: true
+
+  - id: AUTH-07
+    title: userB creates own test order
+    actor: userB
+    method: POST
+    path: /api/orders
+    params:
+      productId: 1
+      phone: 79990000002
+    expected: 200
+    captures:
+      order_id: ORDER_B_ID
+    destructive: true
+
+  - id: AUTH-08
+    title: anonymous cannot read userA order by id
+    actor: anonymous
+    method: GET
+    path: /api/orders/${ORDER_A_ID}
+    expected: [401, 403, 404]
+    destructive: false
+
+  - id: AUTH-09
+    title: userB cannot read userA order by id
+    actor: userB
+    method: GET
+    path: /api/orders/${ORDER_A_ID}
+    expected: [403, 404]
+    destructive: false
+    finding_if: 200
+    category: BOLA/IDOR
+
+  - id: AUTH-10
+    title: userA can read own order
+    actor: userA
+    method: GET
+    path: /api/orders/${ORDER_A_ID}
+    expected: 200
+    destructive: false
+
+  - id: AUTH-11
+    title: anonymous cannot delete product
+    actor: anonymous
+    method: DELETE
+    path: /api/products/1
+    expected: [401, 403]
+    destructive: true
+    finding_if: 200
+    category: Broken Function Level Authorization
+
+  - id: AUTH-12
+    title: ROLE_USER cannot delete product
+    actor: userA
+    method: DELETE
+    path: /api/products/1
+    expected: [401, 403]
+    destructive: true
+    finding_if: 200
+    category: Broken Function Level Authorization
+
+  - id: AUTH-13
+    title: ROLE_USER cannot create arbitrary privileged user
+    actor: userA
+    method: POST
+    path: /api/users/creation
+    params:
+      login: escalation-test
+      pass: ${TEST_USER_PASS}
+      name: EscalationTest
+      avatar: netology.jpg
+      roles: ROLE_ADMIN
+    expected: [401, 403]
+    destructive: true
+    finding_if: 200
+    category: Broken Function Level Authorization
+
+  - id: AUTH-14
+    title: anonymous cannot upload media
+    actor: anonymous
+    method: POST
+    path: /api/media
+    expected: [401, 403]
+    destructive: false
+
+  - id: AUTH-15
+    title: ROLE_USER may upload allowed media
+    actor: userA
+    method: POST
+    path: /api/media
+    expected: 200
+    destructive: true
+    prerequisite: safe JPEG/PNG test file
+
+notes:
+  - Public self-registration is not automatically a vulnerability; the endpoint assigns ROLE_USER server-side.
+  - Registration and authentication return tokens. Token values must be redacted from evidence.
+  - Order creation is intentionally able to represent anonymous orders in the current service implementation; assess business intent separately from object-read authorization.
+  - Destructive tests must be run on the disposable local stand and may require docker compose reset between cases.
