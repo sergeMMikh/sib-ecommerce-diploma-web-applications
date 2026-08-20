@@ -797,7 +797,23 @@ Credential `/src/fcm.json`, ранее обнаруженный в backend image
 
 #### 8. Автоматический DAST
 
-Для frontend выполнен OWASP ZAP Baseline в пассивном режиме. Сканирование запускалось из контейнера ZAP только против разрешённой локальной цели `http://host.docker.internal:8888`; spider был ограничен одной минутой. Активные правила и внешние цели не использовались.
+Для динамического анализа работающего приложения использован OWASP ZAP 2.17.0 в режиме Baseline. Проверка выполнялась на локальном стенде из Docker-контейнера ZAP.
+
+На первом этапе выполнено пассивное сканирование frontend:
+
+```bash
+docker run --rm \
+  --add-host=host.docker.internal:host-gateway \
+  -v "$PWD/evidence/08-dast:/zap/wrk/:rw" \
+  ghcr.io/zaproxy/zaproxy:stable \
+  zap-baseline.py \
+  -t http://host.docker.internal:8888 \
+  -r zap-frontend-report.html \
+  -J zap-frontend-report.json \
+  -w zap-frontend-report.md
+```
+
+Сканирование выполнялось только против разрешённой локальной цели `http://host.docker.internal:8888`. Активные правила и внешние цели не использовались.
 
 ZAP обнаружил 10 типов alert'ов: 0 высокого, 2 среднего, 6 низкого и 2 информационного уровня.
 
