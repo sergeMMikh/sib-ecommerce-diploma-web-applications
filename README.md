@@ -1,29 +1,25 @@
 # Necommerce Security Assessment
 
-**Risk-oriented application security assessment of an e-commerce platform**
-
-[Русская версия / Full Russian report](README-rus.md)
+[Русская версия](README-rus.md)
 
 ## Overview
 
-This repository documents a security assessment of **Necommerce**, a training e-commerce application consisting of separate frontend and backend services.
+This repository contains a risk-based security assessment of **Necommerce**, a Dockerized e-commerce web application consisting of a frontend and backend service.
 
-The assessment was performed as a course project for the Information Security Specialist program, but the work was intentionally structured as a reproducible application-security review rather than as a collection of isolated tool runs.
+The assessment was performed as a course project in information security and was accepted on the first review. The original Russian report is preserved in [`README-rus.md`](README-rus.md). This English README is a condensed portfolio-oriented version focused on methodology, reproducibility, findings, risk assessment, and remediation.
 
-The scenario assumes that the application has previously experienced a large-scale leak of user and purchase data. The objective was therefore to review the application, its source code, dependencies, container images, CI/CD configuration, runtime behavior, authentication and authorization controls, and to identify security weaknesses that could lead to another incident.
+### Assessment targets
 
-Upstream application repositories:
+- Frontend source: [netology-code/necommerce-frontend](https://github.com/netology-code/necommerce-frontend)
+- Backend source: [netology-code/necommerce-backend](https://github.com/netology-code/necommerce-backend)
+- Locally deployed frontend, backend, REST API, Docker images, and runtime configuration
+- Publicly visible GitHub Actions and development-process artifacts
 
-- [Frontend](https://github.com/netology-code/necommerce-frontend)
-- [Backend](https://github.com/netology-code/necommerce-backend)
+### Security references
 
-> The detailed Russian-language report, including the original assignment, planning material, command output, intermediate analysis, and complete evidence references, is preserved in [`README-rus.md`](README-rus.md).
+The assessment used a risk-oriented selection of requirements and techniques from:
 
-## Assessment approach
-
-The work followed a risk-oriented workflow based primarily on:
-
-- OWASP Application Security Verification Standard (ASVS)
+- OWASP ASVS
 - OWASP Web Security Testing Guide (WSTG)
 - OWASP Top 10
 - OWASP API Security Top 10
@@ -31,220 +27,418 @@ The work followed a risk-oriented workflow based primarily on:
 - CWE
 - CVSS 4.0
 
-This was not intended to be a full ASVS certification. Testing focused on the attack paths most relevant to the incident scenario: authentication, authorization, orders, personal data, API endpoints, secrets, dependencies, container configuration, CI/CD, logging, and exposed application functionality.
+The work does **not** claim formal ASVS certification. Coverage was intentionally prioritized around authentication, authorization, orders, personal data, secrets, dependencies, containers, CI/CD, logging, and web/API attack surface.
 
-## Scope
+---
 
-The assessment covered:
+## Test environment
 
-- frontend and backend source code;
-- application architecture and attack surface;
-- GitHub Actions workflows and publicly visible development controls;
-- secrets in repositories and container images;
-- frontend and backend dependencies;
-- static application security testing (SAST);
-- Dockerfiles, Docker Compose configuration, images, and runtime settings;
-- passive dynamic application security testing (DAST);
-- manual API and negative testing;
-- authentication and role-based authorization;
-- object-level and function-level authorization;
-- validation, deduplication, and risk assessment of findings.
+The application was reproduced locally with Docker Compose using the published Necommerce images.
 
-## Tools
+```yaml
+version: '3.7'
+services:
+  backend:
+    image: ghcr.io/netology-code/necommerce-backend
+    ports:
+      - 9999:9999
 
-The assessment used a combination of automated tools and manual verification:
+  frontend:
+    image: ghcr.io/netology-code/necommerce-frontend
+    environment:
+      - API=http://backend:9999
+      - MEDIA=http://backend:9999
+    ports:
+      - 8888:80
+    depends_on:
+      - backend
+```
 
-| Tool / technique | Purpose |
-| --- | --- |
-| Semgrep CE | Static analysis of frontend/backend source and configuration |
-| Gitleaks | Secret scanning of Git history/source repositories |
-| Trivy | Container image and dependency vulnerability analysis |
-| npm audit | Frontend dependency/SCA analysis |
-| OWASP ZAP | Passive DAST against the local frontend and backend API |
-| curl | Reproducible API and authorization tests |
-| jq | Filtering and sanitizing JSON results |
-| Docker / Docker Compose | Reproducible local test environment |
-| Manual source review | Security configuration, authentication, authorization, controllers, services, tokens, files, and logging |
+Local image IDs and registry digests were recorded for reproducibility. Runtime behavior, network exposure, process user, logs, image contents, and security-relevant Docker configuration were inspected separately.
 
-Raw or unnecessarily sensitive output was not committed when a sanitized evidence artifact was sufficient.
+---
 
 ## Assessment workflow
 
-The work was divided into the following packages:
+The work was divided into 12 packages.
 
-1. Environment and scope definition
-2. Architecture and attack-surface analysis
-3. CI/CD and development-process review
-4. Secret scanning
-5. Dependency and SBOM analysis
-6. Source-code review and SAST
-7. Container and configuration security
-8. Dynamic application security testing
-9. Manual negative and API testing
-10. Authentication, session, and authorization testing
-11. Finding verification and risk assessment
-12. Final conclusions and remediation priorities
+| # | Area | Main techniques/tools | Result |
+|---|---|---|---|
+| 1 | Test stand and reproducibility | Docker Compose, `docker inspect`, logs, image IDs/digests | FINDING |
+| 2 | Architecture and attack surface | Source review, endpoint inventory, trust boundaries | COMPLETED |
+| 3 | Repositories and SDLC | GitHub Actions review, branch/security process review | FINDING |
+| 4 | Secrets | Gitleaks, Trivy secret scan, image inspection | FINDING |
+| 5 | Dependencies / SCA / SBOM | Trivy filesystem scan, `npm audit` | FINDING / PARTIAL |
+| 6 | Source code security | Semgrep + manual security review | FINDING |
+| 7 | Containers and runtime configuration | Trivy image scan, Docker runtime inspection | FINDING |
+| 8 | Automated DAST | OWASP ZAP Baseline and Automation Framework | FINDING |
+| 9 | Manual web/API negative testing | Reproducible `curl` scenarios | FINDING / PARTIAL |
+| 10 | Authentication and authorization | Role matrix, BOLA/BFLA tests | FINDING |
+| 11 | Verification and risk assessment | Deduplication, CWE/OWASP mapping, CVSS 4.0 | FINDING |
+| 12 | Final recommendations | Evidence-driven remediation plan | COMPLETED |
 
-Evidence is stored under [`evidence/`](evidence/), grouped by assessment stage.
+`FINDING` means that the test was completed and an issue was confirmed; it does not mean the test itself was left unfinished.
 
-## Key confirmed findings
+---
 
-### 1. Broken Object Level Authorization (BOLA / IDOR)
+## Key findings
 
-A user order could be retrieved directly by its numeric identifier:
+### F-01 — Broken Object Level Authorization (BOLA/IDOR)
+
+**Severity:** High  
+**CVSS 4.0:** `8.7`  
+**Vector:** `CVSS:4.0/AV:N/AC:L/AT:N/PR:N/UI:N/VC:H/VI:N/VA:N/SC:N/SI:N/SA:N`  
+**CWE:** CWE-639  
+**OWASP API:** API1:2023 Broken Object Level Authorization  
+**Confidence:** High — dynamically reproduced
+
+A test order belonging to `userA` was created. The following request returned the order data with **no authentication**:
 
 ```http
-GET /api/orders/{id}
+GET /api/orders/1
 ```
 
-Testing demonstrated that:
+The same object was also successfully retrieved by a different user (`userB`). The response included owner-related data such as user ID, name, and phone number.
 
-- the owner could retrieve the order;
-- a different authenticated user could retrieve the same order;
-- an unauthenticated client could also retrieve the order.
+This confirms that knowledge or enumeration of an order ID is sufficient to access another user's order.
 
-The response included owner information, including the owner's name and phone number.
+**Impact:** unauthorized disclosure of order and personal data.
 
-This confirms a **Broken Object Level Authorization** vulnerability: knowledge or enumeration of an order identifier is sufficient to access another user's order without an ownership check.
+**Recommended fix:** require authentication on `/api/orders/{id}` and enforce ownership or an explicitly privileged role at the object-access layer. Add cross-user and anonymous regression tests.
 
-**Classification:** CWE-639 / OWASP API1:2023 — Broken Object Level Authorization  
-**CVSS 4.0:** **8.7 (High)**  
-**Vector:** `CVSS:4.0/AV:N/AC:L/AT:N/PR:N/UI:N/VC:H/VI:N/VA:N/SC:N/SI:N/SA:N`
+Evidence: [`evidence/10-authz`](evidence/10-authz/README.md)
 
-### 2. Unauthenticated product deletion
+---
 
-Manual testing confirmed that a product could be deleted without authentication:
+### F-02 — Product deletion without authentication
+
+**Severity:** High  
+**CVSS 4.0:** `8.7`  
+**Vector:** `CVSS:4.0/AV:N/AC:L/AT:N/PR:N/UI:N/VC:N/VI:H/VA:N/SC:N/SI:N/SA:N`  
+**CWE:** CWE-862  
+**OWASP API:** API5:2023 Broken Function Level Authorization  
+**Confidence:** High — reproduced more than once
+
+An unauthenticated request successfully deleted a product:
 
 ```http
 DELETE /api/products/{id}
 ```
 
-The request returned `200 OK`, and a subsequent `GET` returned `404 Not Found`, confirming that the object had actually been removed.
+The server returned `HTTP 200`, and a subsequent `GET` for the same object returned `404`, confirming that the object had actually been deleted.
 
-This is a function-level authorization failure that allows an unauthenticated client to modify application state and compromise catalogue integrity.
+**Impact:** unauthenticated modification of catalog data and loss of integrity.
 
-**Classification:** CWE-862 / OWASP API5:2023 — Broken Function Level Authorization  
-**CVSS 4.0:** **8.7 (High)**  
-**Vector:** `CVSS:4.0/AV:N/AC:L/AT:N/PR:N/UI:N/VC:N/VI:H/VA:N/SC:N/SI:N/SA:N`
+**Recommended fix:** deny anonymous state-changing operations and restrict product deletion to the intended administrative role. Add authorization regression tests for all mutating endpoints.
 
-### 3. Administrative credentials exposed in startup logs
+Evidence: [`evidence/09-manual-api`](evidence/09-manual-api/README.md), [`evidence/10-authz`](evidence/10-authz/README.md)
 
-Backend review and runtime verification showed that administrative credentials are generated during startup and written to application logs.
+---
 
-Credential values were deliberately excluded from committed evidence.
+### F-03 — Administrative credentials written to application logs
 
-This creates a high-impact exposure if logs become accessible to another user, monitoring system, support process, container operator, or log aggregation platform.
+**Severity:** High  
+**CVSS 4.0:** `8.5`  
+**Vector:** `CVSS:4.0/AV:L/AC:L/AT:N/PR:L/UI:N/VC:H/VI:H/VA:H/SC:N/SI:N/SA:N`  
+**CWE:** CWE-532  
+**OWASP:** A09:2021 Security Logging and Monitoring Failures  
+**Confidence:** High — source and runtime evidence
 
-**Classification:** CWE-532 — Insertion of Sensitive Information into Log File  
-**CVSS 4.0:** **8.5 (High)**  
-**Vector:** `CVSS:4.0/AV:L/AC:L/AT:N/PR:L/UI:N/VC:H/VI:H/VA:H/SC:N/SI:N/SA:N`
+During backend startup, an automatically generated administrative account is written to application logs, including its password. Secret values were intentionally removed from the repository evidence.
 
-### 4. Authentication-token lifecycle weaknesses
+**Impact:** anyone with access to application logs may obtain privileged credentials.
 
-Manual source review identified weaknesses in authentication-token generation/lifecycle management, including predictable generation characteristics and insufficient planned invalidation controls.
+**Recommended fix:** never log credentials or authentication secrets, rotate potentially exposed credentials, and restrict/monitor access to production logs.
 
-This finding was retained as an authentication-design issue rather than assigning an artificial aggregate CVSS score without a single fully demonstrated exploitation path.
+Evidence: [`evidence/06-source-code`](evidence/06-source-code/manual-security-review.md)
 
-### 5. Vulnerable frontend dependency tree
+---
 
-SCA identified a significant number of known advisories in the frontend dependency tree. `npm audit` reported:
+### F-04 — Weak authentication-token lifecycle
 
-- 204 total advisories;
-- 21 critical;
-- 60 high;
-- 116 moderate;
-- 7 low.
+**Priority:** High  
+**CWE:** CWE-330 / CWE-613  
+**OWASP:** A07:2021 Identification and Authentication Failures  
+**Confidence:** High for source-code weakness; exploitability was not fully demonstrated dynamically
 
-Direct vulnerable dependencies included `axios` and `react-scripts`; many additional findings were transitive dependencies.
+Manual source review identified:
 
-These results require remediation and reachability triage. The presence of an advisory was not treated as proof that every affected package is exploitable in the running application.
+- token generation based on `java.util.Random(9999)` with a fixed seed;
+- a scheduled token invalidation routine containing an unimplemented `TODO`.
 
-### 6. Container and CI/CD hardening issues
+This creates concerns around token predictability and session lifetime/revocation.
 
-Static and configuration review identified additional hardening concerns, including:
+**Recommended fix:** use a cryptographically secure token mechanism (`SecureRandom` or a standard authentication framework), enforce expiration, and implement revocation/invalidation.
 
-- backend container execution without an explicit non-root `USER`;
-- mutable GitHub Actions references instead of full commit-SHA pinning;
-- mutable container image references that do not guarantee byte-for-byte reproducibility after a future pull;
-- services published more broadly than the local active-testing allowlist;
-- missing Docker health checks, restart policies, resource limits, and other runtime hardening controls;
-- excessive backend logging, including sensitive-field indicators.
+No standalone CVSS score was assigned because end-to-end exploitability was not reproduced as a single runtime vulnerability during the assessment.
 
-These issues were consolidated rather than counted repeatedly for every individual scanner message or workflow line.
+---
 
-## Authorization results
+### F-05 — Secret embedded in the backend image
 
-The application does implement role-based controls on several routes. For example:
+**Priority:** P0 pending owner validation  
+**Confidence:** High for the presence of the credential file; validity and IAM impact were intentionally not tested
+
+Trivy identified a Google Cloud service-account JSON credential inside the backend container image at:
+
+```text
+/src/fcm.json
+```
+
+Image-layer analysis associated it with the build process. The credential value itself is not stored in the public evidence.
+
+**Impact:** if the credential remains active, compromise depends on its IAM permissions and could extend outside the application.
+
+**Recommended fix:** revoke/rotate the key, inspect cloud audit logs and IAM permissions, remove secrets from source/build context, and rebuild all affected image layers.
+
+Evidence: [`evidence/04-secrets`](evidence/04-secrets/)
+
+---
+
+## Source-code review
+
+### Semgrep
+
+Backend:
+
+- 63 files scanned
+- 111 rules
+- 5 findings
+  - 4 warnings for mutable GitHub Actions references
+  - 1 error: backend Dockerfile does not define a non-root `USER`
+
+Frontend:
+
+- 41 files scanned
+- 256 rules
+- 5 warnings for mutable GitHub Actions references
+
+No Semgrep findings were reported directly in Kotlin or JavaScript application logic. The most important application-level authorization problems were instead identified during manual source review and later confirmed dynamically.
+
+### Manual review highlights
+
+Manual analysis identified several security-relevant patterns, including:
+
+- global Spring Security configuration with `anyRequest().permitAll()`;
+- missing object-level authorization on `GET /api/orders/{id}`;
+- missing role protection on `DELETE /api/products/{id}`;
+- predictable authentication-token generation;
+- incomplete token invalidation;
+- administrative credentials being written to logs;
+- media-type validation based on Apache Tika and server-generated filenames, but no obvious upload-size limit.
+
+Evidence: [`evidence/06-source-code/manual-security-review.md`](evidence/06-source-code/manual-security-review.md)
+
+---
+
+## Dependency and image security
+
+### Frontend dependency analysis
+
+Trivy filesystem scan:
+
+- **235** findings total
+- 20 Critical
+- 108 High
+- 87 Medium
+- 20 Low
+
+`npm audit`:
+
+- **204** advisories
+- 21 Critical
+- 60 High
+- 116 Moderate
+- 7 Low
+
+Direct vulnerable dependencies included `axios` and `react-scripts`; many critical package-level findings were transitive.
+
+These counts represent scanner results, not 204 independent exploitable vulnerabilities. Reachability and runtime applicability of individual CVEs require further triage.
+
+Evidence: [`evidence/05-dependencies`](evidence/05-dependencies/)
+
+### Container image analysis
+
+Trivy image scans produced the following counts:
+
+| Image/component | Critical | High | Medium | Low | Unknown |
+|---|---:|---:|---:|---:|---:|
+| Backend Debian packages | 53 | 217 | 188 | 68 | 12 |
+| Backend Java/JAR components | 44 | 284 | 303 | 34 | — |
+| Frontend Debian packages | 43 | 159 | 184 | 50 | 9 |
+
+The backend runtime image also contains Gradle cache/build-time JAR files under `/root/.gradle/caches/...`, increasing image size and attack surface.
+
+Runtime inspection additionally showed:
+
+- backend process running as root;
+- writable root filesystem;
+- no capability drops;
+- no `SecurityOpt` restrictions;
+- no Docker healthcheck;
+- ports published on `0.0.0.0` / `::` rather than loopback only.
+
+Evidence: [`evidence/07-containers`](evidence/07-containers/README.md)
+
+---
+
+## Dynamic application testing
+
+### OWASP ZAP — frontend
+
+ZAP Baseline identified missing or weak HTTP response protections, including:
+
+- Content-Security-Policy not set;
+- missing anti-clickjacking protection reported by ZAP;
+- missing COEP/COOP/CORP headers;
+- missing Permissions-Policy;
+- `X-Content-Type-Options` missing on tested frontend responses;
+- server version disclosure (`nginx/1.19.8`).
+
+The frontend was therefore classified as `FINDING` for this test package.
+
+### OWASP ZAP — backend
+
+The initial baseline scan of `/` was not useful because the API root returned `404`. A ZAP Automation Framework requestor plan was then used to exercise selected real API endpoints.
+
+Tested endpoints returned `200` JSON responses. ZAP reported `Timestamp Disclosure - Unix`, but manual verification showed that the detected value was simply the application's normal public `published` timestamp field. It was therefore classified as **false positive / not security relevant**.
+
+Evidence: [`evidence/08-dast`](evidence/08-dast/)
+
+---
+
+## Authentication and authorization matrix
+
+The assessment used separate subjects representing:
+
+- anonymous user;
+- `userA`;
+- `userB`;
+- manager;
+- administrator-related operations where applicable.
+
+Examples of correctly enforced access control:
 
 | Scenario | Result |
-| --- | --- |
+|---|---|
 | Anonymous → `GET /api/orders` | `403 Forbidden` |
-| Regular user → `GET /api/orders` | `403 Forbidden` |
-| Manager → `GET /api/orders` | `200 OK` |
-| Regular user → `GET /api/orders/my` | `200 OK` |
-| Regular user attempts administrative user creation | `403 Forbidden` |
-| Invalid authentication credentials | `400 Bad Request` |
+| `ROLE_USER` → `GET /api/orders` | `403 Forbidden` |
+| `ROLE_MANAGER` → `GET /api/orders` | `200 OK` |
+| `ROLE_USER` → `GET /api/orders/my` | `200 OK` |
+| `ROLE_USER` attempts admin-only user creation | `403 Forbidden` |
+| Invalid credentials | `400 Bad Request` |
 
-However, these controls are inconsistent. Object-level and function-level tests demonstrated that selected endpoints bypass the otherwise present role model, which is why authorization was treated as the highest-priority application risk.
+However, the same application allowed both anonymous and cross-user access to `GET /api/orders/{id}`, demonstrating that role-level protection was applied inconsistently and was not sufficient at the object level.
 
-## DAST and manual verification
+Evidence: [`evidence/10-authz`](evidence/10-authz/README.md)
 
-OWASP ZAP was used for passive testing of both the frontend and selected backend API endpoints in the local Docker environment. Automated results were treated as candidates rather than final vulnerabilities.
+---
 
-For example, a ZAP `Timestamp Disclosure - Unix` alert was manually reviewed and classified as non-security-relevant because the detected value was the application's expected public `published` field.
+## Verification and risk assessment
 
-Manual negative tests also verified controlled handling of several malformed or unsupported requests, including:
+Automated results were manually reviewed before inclusion in the final register.
 
-- invalid object identifiers;
-- malformed JSON;
-- unsupported HTTP methods;
-- unauthenticated file upload attempts.
+Examples of normalization performed during verification:
 
-Where the application returned expected `400`, `403`, `404`, or `405` responses without stack traces or internal implementation details, those cases were not promoted to findings.
+- repeated Semgrep warnings for mutable GitHub Actions references were grouped into one CI/CD supply-chain issue;
+- package advisories were treated as an SCA management problem rather than one independent application vulnerability per package;
+- ZAP Unix timestamp disclosure was classified as a false positive;
+- expected `400`, `404`, and `405` responses without stack traces were not treated as vulnerabilities;
+- public self-registration was not classified as a vulnerability because users could not assign themselves privileged roles in the tested flow.
 
-## Risk assessment
+Full risk-register evidence is available in [`evidence/11-risk-register`](evidence/11-risk-register/README.md).
 
-Automated results were deduplicated and manually reviewed before inclusion in the final register. Duplicate scanner messages were consolidated, and false positives or purely informational observations were separated from confirmed security findings.
+---
 
-CVSS 4.0 scores were assigned only where the assessment produced a sufficiently concrete and reproducible vulnerability scenario. Aggregate dependency, process, and hardening observations were not given invented CVSS scores where doing so would imply more certainty than the evidence supports.
+## Remediation priorities
 
-The highest remediation priority is authorization:
+### P0 / immediate
 
-1. enforce authentication and ownership checks for `GET /api/orders/{id}`;
-2. protect all state-changing catalogue operations, including `DELETE /api/products/{id}`;
-3. remove credentials and other sensitive values from application logs;
-4. redesign authentication-token generation, storage, expiration, and invalidation;
-5. triage and update vulnerable dependencies;
-6. harden containers and CI/CD dependencies;
-7. add automated regression tests for BOLA/BFLA and the complete role matrix.
+1. Fix BOLA/IDOR on `/api/orders/{id}` by enforcing authentication and ownership/privileged-role checks.
+2. Protect all state-changing catalog operations, especially `DELETE /api/products/{id}`.
+3. Remove credentials from application logs and rotate potentially exposed administrative credentials.
+4. Validate and, if active, revoke/rotate the service-account credential found in the backend image.
+5. Replace predictable authentication-token generation and implement expiration/revocation.
 
-## Evidence
+### P1 / high priority
 
-Reproducible and sanitized evidence is organized under [`evidence/`](evidence/). The evidence structure separates individual assessment stages and keeps large raw scanner output out of the main report where a filtered result is more useful.
+1. Upgrade vulnerable dependencies and base images after reachability/applicability triage.
+2. Build smaller multi-stage runtime images without Gradle caches/build artifacts.
+3. Run application containers as non-root and apply container hardening.
+4. Pin GitHub Actions to full commit SHAs and make security checks blocking where appropriate.
+5. Reduce debug/trace logging and prevent sensitive data from entering logs.
+6. Restrict locally exposed service ports to the required interfaces.
 
-Examples include:
+### P2 / hardening
 
-- attack-surface and endpoint documentation;
-- secret-scanning results;
-- dependency-analysis summaries;
-- Semgrep/SAST findings;
-- container and configuration checks;
-- ZAP reports and execution logs;
-- manual negative-testing evidence;
-- authorization test plans and results;
-- the consolidated risk register.
+1. Configure applicable browser security headers on the frontend.
+2. Pin container image references by immutable digest for reproducible deployments.
+3. Add negative regression tests for authorization, authentication, file handling, and error processing.
 
-Sensitive authentication tokens, passwords, and unnecessary personal data were not intentionally committed to evidence.
+---
 
-## Conclusion
+## Evidence structure
 
-The assessment found that Necommerce has several security controls that behave correctly in isolation, including role restrictions on selected endpoints and appropriate rejection of a number of malformed requests. However, the overall authorization model is inconsistent.
+The repository keeps reproducible evidence grouped by assessment package:
 
-The most important issue is that object-level and function-level authorization checks are missing on selected API operations. This directly enables unauthorized access to order data and unauthenticated modification of catalogue content. Additional risks exist in credential logging, authentication-token lifecycle management, vulnerable dependencies, container hardening, and CI/CD supply-chain controls.
+```text
+evidence/
+├── 01-stand/
+├── 02-attack-surface/
+├── 03-sdlc/
+├── 04-secrets/
+├── 05-dependencies/
+├── 06-source-code/
+├── 07-containers/
+├── 08-dast/
+├── 09-manual-api/
+├── 10-authz/
+└── 11-risk-register/
+```
 
-The project demonstrates why automated security scanners should not be treated as the final result of an application-security assessment: the highest-impact findings in this review required source-code analysis, explicit hypotheses, and manual reproduction against the running application.
+Sensitive values such as authentication tokens, passwords, and raw cloud credentials were deliberately excluded or redacted from committed evidence.
 
-## Repository languages
+---
 
-- **English:** this `README.md` — concise portfolio-oriented assessment summary
-- **Russian:** [`README-rus.md`](README-rus.md) — full course report, methodology, commands, intermediate results, and detailed evidence references
+## Limitations
+
+The assessment intentionally documents incomplete or inaccessible areas instead of treating them as passed:
+
+- backend SCA and a complete SBOM were not finished;
+- manual API and authorization testing did not cover every one of the mapped API routes;
+- token lifecycle, rate limiting, authenticated upload scenarios, and some manager/admin combinations were not fully exercised dynamically;
+- private GitHub repository settings, rulesets, and security reports were unavailable and were classified as `BLOCKED`, not `PASS`;
+- the validity and IAM permissions of the discovered Google Cloud credential were intentionally not tested against the external cloud environment.
+
+---
+
+## Main conclusion
+
+The most important systemic issue was **inconsistent authorization enforcement**.
+
+Some endpoints correctly enforced role-based restrictions, while individual object-level and function-level operations bypassed those controls entirely. This resulted in two directly reproducible high-impact vulnerabilities: unauthenticated/cross-user access to order data and unauthenticated deletion of products.
+
+The assessment also identified significant security debt around secret management, authentication-token lifecycle, vulnerable dependencies, container hardening, CI/CD integrity, and logging.
+
+The project demonstrates a full security-assessment workflow from environment reproduction and attack-surface mapping through SAST/SCA/secret scanning, container analysis, DAST, manual API testing, authorization verification, false-positive triage, CWE/OWASP mapping, CVSS 4.0 scoring, and evidence-driven remediation.
+
+---
+
+## Tools used
+
+- Docker / Docker Compose
+- Trivy
+- Gitleaks
+- Semgrep
+- npm audit
+- OWASP ZAP
+- curl / jq
+- Git / GitHub
+- manual source-code and API review
+
+---
+
+## Language versions
+
+- **English portfolio summary:** this file
+- **Full Russian course report:** [`README-rus.md`](README-rus.md)
