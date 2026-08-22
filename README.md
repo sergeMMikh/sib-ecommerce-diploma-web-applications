@@ -245,6 +245,11 @@ All STAND-01–STAND-08 checks were performed. `FINDING` means that a deviation 
 
 ![STAND-03 — backend response to the root route](./pic/image-1.png)
 
+Additional stand verification screenshots:
+
+![second-test](./pic/image-4.png)
+![second-test](./pic/image-2.png)
+
 **Item 1 conclusion:** frontend and backend operability was confirmed; the current environment was identified by image IDs, registry digests, and Compose configuration. Full reproducibility is not guaranteed because mutable image references are used. Broad port publication and excessively detailed backend logging were also recorded. Overall status: `FINDING`.
 
 ---
@@ -297,7 +302,12 @@ Secret scanning was performed against the source repositories and container cont
 Gitleaks source-history scan results:
 
 * backend — 2 commits scanned, **1 leak candidate**;
+
+![backend Gitleaks result](./pic/image-5.png)
+
 * frontend — 4 commits scanned, **no leaks found**.
+
+![frontend Gitleaks result](./pic/image-6.png)
 
 The raw secret value was not copied into the report.
 
@@ -350,6 +360,10 @@ Evidence: [`evidence/05-dependencies`](./evidence/05-dependencies/).
 
 Semgrep CE was run with `--config auto` against both repositories, followed by manual review of security configuration, authentication filters, controllers/services, object access, tokens, file handling, and logging.
 
+##### Backend
+
+![Semgrep backend result](./pic/image-7.png)
+
 Backend Semgrep result:
 
 * 63 files scanned;
@@ -357,6 +371,10 @@ Backend Semgrep result:
 * 5 findings: 4 `WARNING`, 1 `ERROR`.
 
 The four warnings concerned mutable GitHub Actions references. The error concerned the backend Dockerfile not defining a non-root `USER`.
+
+##### Frontend
+
+![Semgrep frontend result](./pic/image-8.png)
 
 Frontend Semgrep result:
 
@@ -385,6 +403,10 @@ Evidence: [`evidence/06-source-code`](./evidence/06-source-code/), including [`m
 #### 7. Containers and configuration
 
 Published frontend and backend images and runtime configuration were assessed using Trivy and Docker inspection.
+
+The full scanner output was about 2 MB, so only a concise summary is included in the report:
+
+![Trivy output size](./pic/image-9.png)
 
 Trivy image results:
 
@@ -438,6 +460,8 @@ A baseline scan against the backend root was initially unsuitable because `/` re
 
 The plan completed successfully and produced a passive-scan report. ZAP reported `Timestamp Disclosure - Unix`; manual verification showed that the value was the application's normal public `published` timestamp field. It was therefore classified as **false positive / not security relevant**.
 
+![Backend ZAP test for product ID 1](./pic/image-10.png)
+
 Evidence: [`evidence/08-dast`](./evidence/08-dast/).
 
 **Item 8 conclusion:** the frontend has several HTTP-header hardening findings; the backend passive result reviewed here did not reveal a significant vulnerability after false-positive verification. Overall package status: `FINDING`.
@@ -465,6 +489,8 @@ DELETE /api/products/{id}
 ```
 
 An unauthenticated request returned `HTTP 200`; a subsequent `GET` returned `404`, confirming that the product had actually been deleted.
+
+![Unauthenticated product deletion](./pic/image-11.png)
 
 Evidence: [`evidence/09-manual-api`](./evidence/09-manual-api/README.md).
 
